@@ -12,16 +12,20 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-path", help="path to MOT dataset", type=str)
-parser.add_argument("-out", help="show output", type=bool)
+parser.add_argument("-out", help="show output", type=str)
 parser.add_argument("-v", "--verbose", help="-")
 args = parser.parse_args()
 
 work_dir = args.path
-show = args.out
+if args.out == 't':
+    show = True
+else: show = False
 
-gt_data = parse_gt_of_images(work_dir + 'train/HT21-01/gt/gt.txt')
-det_data = parse_det_of_images(work_dir + 'train/HT21-01/det/det.txt')
-img_dir = work_dir + 'train/HT21-01/img1/'
+print(show)
+
+gt_data = parse_gt_of_images(work_dir + '/gt/gt.txt')
+det_data = parse_det_of_images(work_dir + '/det/det.txt')
+img_dir = work_dir + '/img1/'
 
 tracker = Tracker(similarity_treshold=0.75, lifetime=27, alpha=0.35)
 acc = mm.MOTAccumulator(auto_id=True)

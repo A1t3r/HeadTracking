@@ -90,7 +90,7 @@ class Tracker:
             # indexes = self.m.compute(matrix.tolist())
             r, c = lsa_solve_lapjv(matrix)
             indexes = [(row, col) for row, col in zip(r, c)]
-            print("--- %s seconds --munkres-" % (time.time() - start_time))
+            print("--- %s seconds --lap-" % (time.time() - start_time))
             tracks_matched = set()
             detections_matched = set()
             for i in range(len(indexes)):
