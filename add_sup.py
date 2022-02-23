@@ -21,7 +21,7 @@ def parse_gt_of_images(dir):
             gt_data = []
         s = single_detection(int(tmp_arr[1]) - 46,
                              (tmp_arr[2], tmp_arr[3]),
-                             tmp_arr[4], tmp_arr[5])
+                             tmp_arr[4], tmp_arr[5], 100)
         gt_data.append(s)
     return GT_data
 
@@ -39,7 +39,7 @@ def parse_det_of_images(dir):
             gt_data = []
         s = single_detection(None,
                              (tmp_arr[2], tmp_arr[3]),
-                             tmp_arr[4], tmp_arr[5])
+                             tmp_arr[4], tmp_arr[5], tmp_arr[6])
         gt_data.append(s)
     return GT_data
 

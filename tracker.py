@@ -5,14 +5,27 @@ from computations import lsa_solve_lapjv, iou
 
 
 class single_detection:
-    def __init__(self, id, coord, l, h):
+    def __init__(self, id, coord, l, h, conf):
         self.id = id
         self.coord = coord
         self.l = l
         self.h = h
         self.hist = None
         self.inactive_counter = 0
+        self.is_active = False
+        self.conf = conf
+        self.is_confirmed = False
+
+    def update(self, coord, hist, l, h, conf):
+        #self.id = id
+        self.hist = hist
+        self.coord = coord
+        self.l = l
+        self.h = h
+        self.conf = conf
+        self.inactive_counter = 0
         self.is_active = True
+        self.is_confirmed = True
 
     def __str__(self):
         return f"id: {self.id}, coord: {self.coord}, len: {self.l}, height: {self.h}"
@@ -20,14 +33,15 @@ class single_detection:
 
 class Tracker:
 
-    def __init__(self, similarity_treshold, lifetime, alpha):
+    def __init__(self, similarity_treshold, high_con_th, low_con_th, lifetime, alpha):
         self.similarity_treshold = similarity_treshold
+        self.high_t = high_con_th
+        self.low_t = low_con_th
         self.lifetime = lifetime
         self.alpha = float(alpha)
         self.beta = 1 - alpha
         self.active_tracks = []
         self.inactive_tracks = []
-        # self.m = Munkres()
         self.last_id = 0
 
     def set_tracklets(self, tracks):
@@ -52,8 +66,8 @@ class Tracker:
         for track in tracks:
             iou_vec = []
             for det in detections:
-                IOU_results_reversed = 1 - iou(track, det)
-                iou_vec.append(IOU_results_reversed)
+                IOU_distance = 1 - iou(track, det)
+                iou_vec.append(IOU_distance)
             iou_matrix.append(iou_vec)
         print("--- %s seconds --iou-" % (time.time() - start_time))
         return iou_matrix
@@ -80,44 +94,106 @@ class Tracker:
         if len(self.active_tracks) == 0:  # tracker initilization
             for det in detections:
                 det.id = self.last_id
+                det.is_active = True
+                det.is_confirmed = True
                 self.last_id += 1
                 self.active_tracks.append(det)
         else:
             start_time = time.time()
-            matrix = self.compute_cost_matrix(self.active_tracks, detections)
-            print("--- %s seconds --cost matrix-" % (time.time() - start_time))
-            start_time = time.time()
-            # indexes = self.m.compute(matrix.tolist())
-            r, c = lsa_solve_lapjv(matrix)
-            indexes = [(row, col) for row, col in zip(r, c)]
-            print("--- %s seconds --lap-" % (time.time() - start_time))
+
+            high_conf_det = []
+            low_conf_det = []
+
+            confirmed_tracks = []
+            unconfirmed_tracks = []
+
+            lost_tracks = []
+
+            # division of tracks
+            for track in self.active_tracks:
+                if track.is_confirmed:
+                    confirmed_tracks.append(track)
+                else:
+                    unconfirmed_tracks.append(track)
+
+            # division of detections
+            for det in detections:
+                if det.conf > self.high_t:
+                    high_conf_det.append(det)
+                elif det.conf > self.low_t:
+                    low_conf_det.append(det)
+
+            unmatched_tracks = {i for i in range(len(confirmed_tracks))}
+            unmatched_detections = {i for i in range(len(high_conf_det))}
+
             tracks_matched = set()
             detections_matched = set()
-            for i in range(len(indexes)):
-                if matrix[indexes[i][0]][indexes[i][1]] < self.similarity_treshold:
-                    cur_track, cur_det = self.active_tracks[indexes[i][0]], detections[indexes[i][1]]
-                    cur_track.coord = cur_det.coord
-                    cur_track.hist = cur_det.hist
-                    cur_track.l = cur_det.l
-                    cur_track.h = cur_det.h
-                    cur_track.is_active = True
-                    cur_track.inactive_counter = 0
-                    tracks_matched.add(indexes[i][0])
-                    detections_matched.add(indexes[i][1])
-            # print(tracks_matched)
-            # print(detections_matched)
 
-            unmatched_tracks = set([x for x in range(len(self.active_tracks))]) - tracks_matched
-            unmatched_detections = set([x for x in range(len(detections))]) - detections_matched
+            # first matching with high conf
+            if len(confirmed_tracks) > 0 and len(high_conf_det) > 0:
+                matrix = self.compute_cost_matrix(confirmed_tracks, high_conf_det)
+                print("--- %s seconds --cost matrix-" % (time.time() - start_time))
+                start_time = time.time()
+                r, c = lsa_solve_lapjv(matrix)
+                indexes = [(row, col) for row, col in zip(r, c)]
+                print("--- %s seconds --lap-" % (time.time() - start_time))
+                for i in range(len(indexes)):
+                    if matrix[indexes[i][0]][indexes[i][1]] < self.similarity_treshold:
+                        cur_track, cur_det = confirmed_tracks[indexes[i][0]], high_conf_det[indexes[i][1]]
+                        cur_track.update(cur_det.coord, cur_det.hist, cur_det.l, cur_det.h, cur_det.conf)
+                        tracks_matched.add(indexes[i][0])
+                        detections_matched.add(indexes[i][1])
+                unmatched_detections = {x for x in range(len(high_conf_det))} - detections_matched
+                unmatched_tracks = {x for x in range(len(confirmed_tracks))} - tracks_matched
+                lost_tracks = [confirmed_tracks[i] for i in unmatched_tracks]
 
-            for i in unmatched_tracks:  # setting inactive tracks
-                self.active_tracks[i].is_active = False
+            # second matching with low conf detections
+            if len(unmatched_tracks) > 0 and len(low_conf_det) > 0:
+                remain_tracks = [confirmed_tracks[i] for i in unmatched_tracks]
+                tracks_matched = set()
+                matrix = self.calculate_IOU(remain_tracks, low_conf_det)
+                r, c = lsa_solve_lapjv(np.array(matrix))
+                indexes = [(row, col) for row, col in zip(r, c)]
+                for i in range(len(indexes)):
+                    if matrix[indexes[i][0]][indexes[i][1]] < self.similarity_treshold:
+                        cur_track, cur_det = remain_tracks[indexes[i][0]], low_conf_det[indexes[i][1]]
+                        cur_track.update(cur_det.coord, cur_det.hist, cur_det.l, cur_det.h, cur_det.conf)
+                        tracks_matched.add(indexes[i][0])
+                unmatched_tracks = {i for i in range(len(remain_tracks))} - tracks_matched
+                lost_tracks = [remain_tracks[i] for i in unmatched_tracks]
 
-            for i in unmatched_detections:  # new detections
-                detections[i].id = self.last_id
-                detections[i].is_active = True
+            # matching for unconfirmed tracks
+            if len(unconfirmed_tracks) > 0 and len(unmatched_detections) > 0:
+                remain_detections = [high_conf_det[i] for i in unmatched_detections]
+                detections_matched = set()
+                matrix = self.calculate_IOU(unconfirmed_tracks, remain_detections)
+                r, c = lsa_solve_lapjv(np.array(matrix))
+                indexes = [(row, col) for row, col in zip(r, c)]
+                for i in range(len(indexes)):
+                    if matrix[indexes[i][0]][indexes[i][1]] < self.similarity_treshold:
+                        cur_track, cur_det = unconfirmed_tracks[indexes[i][0]], remain_detections[indexes[i][1]]
+                        cur_track.update(cur_det.coord, cur_det.hist, cur_det.l, cur_det.h, cur_det.conf)
+                        detections_matched.add(indexes[i][1])
+                unmatched_detections = {x for x in range(len(remain_detections))} - detections_matched
+
+            for track in lost_tracks:  # setting inactive tracks
+                track.is_active = False
+
+            remain_detections = [detections[i] for i in unmatched_detections]
+            for det in remain_detections: # new detections
+                det.id = self.last_id
+                det.is_active = True
                 self.last_id += 1
-                self.active_tracks.append(detections[i])
+                self.active_tracks.append(det)
+
+            #for i in unmatched_tracks:  # setting inactive tracks
+            #    self.active_tracks[i].is_active = False
+            #
+            # for i in unmatched_detections:  # new detections
+            #     detections[i].id = self.last_id
+            #     detections[i].is_active = True
+            #     self.last_id += 1
+            #     self.active_tracks.append(detections[i])
 
             for track in self.active_tracks:  # updating old tracks' age
                 if not track.is_active:
