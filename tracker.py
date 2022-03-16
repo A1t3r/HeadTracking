@@ -1,12 +1,13 @@
 import cv2
 import time
 import numpy as np
-from . import kalman_filter
+import copy
+import kalman_filter
 from computations import lsa_solve_lapjv, iou, iou_vector
 
 
 class single_detection:
-    def __init__(self, id, coord, l, h, conf):
+    def __init__(self, id, coord, l, h, conf, mean, covariance):
         self.id = id
         self.coord = coord
         self.l = l
@@ -16,9 +17,22 @@ class single_detection:
         self.is_active = False
         self.conf = conf
         self.is_confirmed = False
-        self.kf = kalman_filter.KalmanFilter()
+        self.mean = mean
+        self.covariance = covariance
 
-    def update(self, coord, hist, l, h, conf):
+    def predict(self, kf):
+        """Propagate the state distribution to the current time step using a
+        Kalman filter prediction step.
+        Parameters
+        ----------
+        kf : kalman_filter.KalmanFilter
+            The Kalman filter.
+        """
+        self.mean, self.covariance = kf.predict(self.mean, self.covariance)
+        self.age += 1
+        self.time_since_update += 1
+
+    def update(self, coord, hist, l, h, conf, kf, mean, covariance):
         # self.id = id
         self.hist = hist
         self.coord = coord
@@ -28,6 +42,11 @@ class single_detection:
         self.inactive_counter = 0
         self.is_active = True
         self.is_confirmed = True
+        return
+        self.mean = mean
+        self.covariance = covariance
+        self.mean, self.covariance = kf.update(
+            self.mean, self.covariance, []) # TO DO Convert bounding box to format `(center x, center y, aspect ratio, height)`, where the aspect ratio is `width / height
 
     def __str__(self):
         return f"id: {self.id}, coord: {self.coord}, len: {self.l}, height: {self.h}"
@@ -45,6 +64,7 @@ class Tracker:
         self.active_tracks = []
         self.inactive_tracks = []
         self.last_id = 0
+        self.kf = kalman_filter.KalmanFilter()
 
     def set_tracklets(self, tracks):
         self.active_tracks = tracks
@@ -152,7 +172,7 @@ class Tracker:
                 for i in range(len(indexes)):
                     if matrix[indexes[i][0]][indexes[i][1]] < self.similarity_treshold:
                         cur_track, cur_det = confirmed_tracks[indexes[i][0]], high_conf_det[indexes[i][1]]
-                        cur_track.update(cur_det.coord, cur_det.hist, cur_det.l, cur_det.h, cur_det.conf)
+                        cur_track.update(cur_det.coord, cur_det.hist, cur_det.l, cur_det.h, cur_det.conf, self.kf, 0, 0)
                         tracks_matched.add(indexes[i][0])
                         detections_matched.add(indexes[i][1])
                 unmatched_detections = {x for x in range(len(high_conf_det))} - detections_matched
@@ -169,7 +189,7 @@ class Tracker:
                 for i in range(len(indexes)):
                     if matrix[indexes[i][0]][indexes[i][1]] < self.similarity_treshold:
                         cur_track, cur_det = remain_tracks[indexes[i][0]], low_conf_det[indexes[i][1]]
-                        cur_track.update(cur_det.coord, cur_det.hist, cur_det.l, cur_det.h, cur_det.conf)
+                        cur_track.update(cur_det.coord, cur_det.hist, cur_det.l, cur_det.h, cur_det.conf, self.kf, 0, 0)
                         tracks_matched.add(indexes[i][0])
                 unmatched_tracks = {i for i in range(len(remain_tracks))} - tracks_matched
                 lost_tracks = [remain_tracks[i] for i in unmatched_tracks]
@@ -184,7 +204,7 @@ class Tracker:
                 for i in range(len(indexes)):
                     if matrix[indexes[i][0]][indexes[i][1]] < self.similarity_treshold:
                         cur_track, cur_det = unconfirmed_tracks[indexes[i][0]], remain_detections[indexes[i][1]]
-                        cur_track.update(cur_det.coord, cur_det.hist, cur_det.l, cur_det.h, cur_det.conf)
+                        cur_track.update(cur_det.coord, cur_det.hist, cur_det.l, cur_det.h, cur_det.conf, self.kf, 0, 0)
                         detections_matched.add(indexes[i][1])
                 unmatched_detections = {x for x in range(len(remain_detections))} - detections_matched
 

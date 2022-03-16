@@ -10,7 +10,7 @@ import time
 from os import path
 import argparse
 
-work_dir = "F:/diploma/HT21/train/HT21-04"
+work_dir = "F:/diploma/HT21/train/HT21-02"
 out_dir = "F:/diploma/out/tracks/HT-train/track/data"
 
 gt_data = parse_gt_of_images(work_dir + '/gt/gt.txt')
@@ -35,27 +35,15 @@ with open(out_dir + "/HT21-01.txt", 'w') as f_out:
     color_table = {}
     gt_data_det = det_data  # parse_det_of_images(work_dir+'train/HT21-01/det/det.txt')
     for ik in range(len(gt_data_det)):
+        #if ik in [1, 31] and work_dir == "F:/diploma/HT21/train/HT21-02":
+        #    continue
         img = cv2.imread(img_dir + ('0' * (6 - len(str(ik + 1)))) + str(ik + 1) + '.jpg')
         cur_detections = gt_data_det[ik]  # gain detections
         cm_len += len(cur_detections)
         start_time = time.time()
         start_time2 = time.time()
         for det in cur_detections:
-            # if det.conf > 90:
-            #     hist_list[0] += 1
-            # elif det.conf > 85:
-            #     hist_list[1] += 1
-            # elif det.conf > 75:
-            #     hist_list[2] += 1
-            # elif det.conf > 70:
-            #     hist_list[3] += 1
-            # elif det.conf > 65:
-            #     hist_list[4] += 1
-            # else:
-            #     hist_list[5] += 1
-            # cv2.imshow('test', extract_image_part(img, det))
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
+
             try:
                 # if(im_it==1):
                 #     cv2.imshow('test', extract_image_part(img, det))
@@ -75,8 +63,9 @@ with open(out_dir + "/HT21-01.txt", 'w') as f_out:
         print("--- %s only tracker seconds ---" % (time.time() - start_time3))
         print("--- %s overall seconds ---" % (time.time() - start_time))
 
-        for det in gt_data[ik]:  # for evaluation
-            det.hist = compute_histogram(extract_image_part(img, det))
+
+       #for det in gt_data[ik]:  # for evaluation
+        #    det.hist = compute_histogram(extract_image_part(img, det))
 
         # marked_detections = tracker.update_det(gt_data_det[ik])
         marked_detections = tracker.get_tracks()  # !!!!
