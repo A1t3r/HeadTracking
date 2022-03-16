@@ -3,6 +3,38 @@ import cv2
 from lap import lapjv
 
 
+def iou_vector(bbox, candidates):
+    """Computer intersection over union.
+    Parameters
+    ----------
+    bbox : ndarray
+        A bounding box in format `(top left x, top left y, width, height)`.
+    candidates : ndarray
+        A matrix of candidate bounding boxes (one per row) in the same format
+        as `bbox`.
+    Returns
+    -------
+    ndarray
+        The intersection over union in [0, 1] between the `bbox` and each
+        candidate. A higher score means a larger fraction of the `bbox` is
+        occluded by the candidate.
+    """
+    bbox_tl, bbox_br = bbox[:2], bbox[:2] + bbox[2:]
+    candidates_tl = candidates[:, :2]
+    candidates_br = candidates[:, :2] + candidates[:, 2:]
+
+    tl = np.c_[np.maximum(bbox_tl[0], candidates_tl[:, 0])[:, np.newaxis],
+               np.maximum(bbox_tl[1], candidates_tl[:, 1])[:, np.newaxis]]
+    br = np.c_[np.minimum(bbox_br[0], candidates_br[:, 0])[:, np.newaxis],
+               np.minimum(bbox_br[1], candidates_br[:, 1])[:, np.newaxis]]
+    wh = np.maximum(0., br - tl)
+
+    area_intersection = wh.prod(axis=1)
+    area_bbox = bbox[2:].prod()
+    area_candidates = candidates[:, 2:].prod(axis=1)
+    return 1 - area_intersection / (area_bbox + area_candidates - area_intersection)
+
+
 def iou(detA, detB):
     xA = max(detA.coord[0], detB.coord[0])
     yA = max(detA.coord[1], detB.coord[1])
@@ -45,11 +77,11 @@ def compute_histogram(im, kernel=True):
     kernel : Will perform circular masking
     """
     x, y = im.shape[:2]
-    if kernel:
-        mask = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (y, x))
-        mask = mask[:, :, np.newaxis]
-    else:
-        mask = np.ones((x, y, 1)).astype(np.uint8)
+    # if kernel:
+    #     mask = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (y, x))
+    #     mask = mask[:, :, np.newaxis]
+    # else:
+    #     mask = np.ones((x, y, 1)).astype(np.uint8)
     hsv_im = compute_new_hsv(im)
     channels = [0, 1, 2]
     hist_size = [8, 8, 8]

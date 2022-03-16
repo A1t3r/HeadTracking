@@ -1,7 +1,8 @@
 import cv2
 import time
 import numpy as np
-from computations import lsa_solve_lapjv, iou
+from . import kalman_filter
+from computations import lsa_solve_lapjv, iou, iou_vector
 
 
 class single_detection:
@@ -15,9 +16,10 @@ class single_detection:
         self.is_active = False
         self.conf = conf
         self.is_confirmed = False
+        self.kf = kalman_filter.KalmanFilter()
 
     def update(self, coord, hist, l, h, conf):
-        #self.id = id
+        # self.id = id
         self.hist = hist
         self.coord = coord
         self.l = l
@@ -69,7 +71,17 @@ class Tracker:
                 IOU_distance = 1 - iou(track, det)
                 iou_vec.append(IOU_distance)
             iou_matrix.append(iou_vec)
-        print("--- %s seconds --iou-" % (time.time() - start_time))
+        print("--- %s 1 --iou-" % (time.time() - start_time))
+        return iou_matrix
+
+    def calc_iou(self, tracks, detections):
+        start_time = time.time()
+        candidates = np.array([np.array([det.coord[0], det.coord[1], det.l, det.h]) for det in detections])
+        iou_matrix = []
+        for tr in tracks:
+            tmp_track = np.array([tr.coord[0], tr.coord[1], tr.l, tr.h])
+            iou_matrix.append(list(iou_vector(tmp_track, candidates)))
+        print("--- %s 2   --iou-" % (time.time() - start_time))
         return iou_matrix
 
     def calcutale_Bhattacharyya_distance(self, tracks, detections):
@@ -87,7 +99,7 @@ class Tracker:
         return hist_sim
 
     def compute_cost_matrix(self, tracks, detections):
-        return self.alpha * np.array(self.calculate_IOU(tracks, detections)) + self.beta * np.array(
+        return self.alpha * np.array(self.calc_iou(tracks, detections)) + self.beta * np.array(
             self.calcutale_Bhattacharyya_distance(tracks, detections))
 
     def Track(self, detections):
@@ -151,7 +163,7 @@ class Tracker:
             if len(unmatched_tracks) > 0 and len(low_conf_det) > 0:
                 remain_tracks = [confirmed_tracks[i] for i in unmatched_tracks]
                 tracks_matched = set()
-                matrix = self.calculate_IOU(remain_tracks, low_conf_det)
+                matrix = self.calc_iou(remain_tracks, low_conf_det)
                 r, c = lsa_solve_lapjv(np.array(matrix))
                 indexes = [(row, col) for row, col in zip(r, c)]
                 for i in range(len(indexes)):
@@ -166,7 +178,7 @@ class Tracker:
             if len(unconfirmed_tracks) > 0 and len(unmatched_detections) > 0:
                 remain_detections = [high_conf_det[i] for i in unmatched_detections]
                 detections_matched = set()
-                matrix = self.calculate_IOU(unconfirmed_tracks, remain_detections)
+                matrix = self.calc_iou(unconfirmed_tracks, remain_detections)
                 r, c = lsa_solve_lapjv(np.array(matrix))
                 indexes = [(row, col) for row, col in zip(r, c)]
                 for i in range(len(indexes)):
@@ -178,24 +190,17 @@ class Tracker:
 
             for track in lost_tracks:  # setting inactive tracks
                 track.is_active = False
+                track.is_confirmed = False
 
             remain_detections = [detections[i] for i in unmatched_detections]
-            for det in remain_detections: # new detections
+            for det in remain_detections:  # new detections
                 det.id = self.last_id
-                det.is_active = True
+              #  det.is_active = True
                 self.last_id += 1
                 self.active_tracks.append(det)
-
-            #for i in unmatched_tracks:  # setting inactive tracks
-            #    self.active_tracks[i].is_active = False
-            #
-            # for i in unmatched_detections:  # new detections
-            #     detections[i].id = self.last_id
-            #     detections[i].is_active = True
-            #     self.last_id += 1
-            #     self.active_tracks.append(detections[i])
 
             for track in self.active_tracks:  # updating old tracks' age
                 if not track.is_active:
                     track.inactive_counter += 1
                     if track.inactive_counter >= self.lifetime: self.active_tracks.remove(track)
+            print("cur tracks:", len(self.active_tracks))
