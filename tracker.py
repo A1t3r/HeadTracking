@@ -7,7 +7,7 @@ from computations import lsa_solve_lapjv, iou, iou_vector
 
 
 class single_detection:
-    def __init__(self, id, coord, l, h, conf, mean, covariance):
+    def __init__(self, id, coord, l, h, conf, mean, covariance, color_hist=None):
         self.id = id
         self.coord = coord
         self.l = l
@@ -17,8 +17,9 @@ class single_detection:
         self.is_active = False
         self.conf = conf
         self.is_confirmed = False
-        self.mean = mean
-        self.covariance = covariance
+        self.mean = np.full(8, 1, dtype=float)
+        self.covariance = np.full((8, 8), 1, dtype=float)
+        self.color_hist = color_hist
 
     def predict(self, kf):
         """Propagate the state distribution to the current time step using a
@@ -32,7 +33,7 @@ class single_detection:
         self.age += 1
         self.time_since_update += 1
 
-    def update(self, coord, hist, l, h, conf, kf, mean, covariance):
+    def update(self, coord, hist, l, h, conf, kf, color_hist=None):
         # self.id = id
         self.hist = hist
         self.coord = coord
@@ -42,11 +43,13 @@ class single_detection:
         self.inactive_counter = 0
         self.is_active = True
         self.is_confirmed = True
-        return
-        self.mean = mean
-        self.covariance = covariance
+        self.color_hist = color_hist
         self.mean, self.covariance = kf.update(
-            self.mean, self.covariance, []) # TO DO Convert bounding box to format `(center x, center y, aspect ratio, height)`, where the aspect ratio is `width / height
+            self.mean, self.covariance, [
+                coord[0] + h/2,
+                coord[1] + l/2,
+                l/h, h
+            ]) # TO DO Convert bounding box to format `(center x, center y, aspect ratio, height)`, where the aspect ratio is `width / height
 
     def __str__(self):
         return f"id: {self.id}, coord: {self.coord}, len: {self.l}, height: {self.h}"
@@ -172,7 +175,7 @@ class Tracker:
                 for i in range(len(indexes)):
                     if matrix[indexes[i][0]][indexes[i][1]] < self.similarity_treshold:
                         cur_track, cur_det = confirmed_tracks[indexes[i][0]], high_conf_det[indexes[i][1]]
-                        cur_track.update(cur_det.coord, cur_det.hist, cur_det.l, cur_det.h, cur_det.conf, self.kf, 0, 0)
+                        cur_track.update(cur_det.coord, cur_det.hist, cur_det.l, cur_det.h, cur_det.conf, self.kf)
                         tracks_matched.add(indexes[i][0])
                         detections_matched.add(indexes[i][1])
                 unmatched_detections = {x for x in range(len(high_conf_det))} - detections_matched
@@ -189,7 +192,7 @@ class Tracker:
                 for i in range(len(indexes)):
                     if matrix[indexes[i][0]][indexes[i][1]] < self.similarity_treshold:
                         cur_track, cur_det = remain_tracks[indexes[i][0]], low_conf_det[indexes[i][1]]
-                        cur_track.update(cur_det.coord, cur_det.hist, cur_det.l, cur_det.h, cur_det.conf, self.kf, 0, 0)
+                        cur_track.update(cur_det.coord, cur_det.hist, cur_det.l, cur_det.h, cur_det.conf, self.kf)
                         tracks_matched.add(indexes[i][0])
                 unmatched_tracks = {i for i in range(len(remain_tracks))} - tracks_matched
                 lost_tracks = [remain_tracks[i] for i in unmatched_tracks]
@@ -204,7 +207,7 @@ class Tracker:
                 for i in range(len(indexes)):
                     if matrix[indexes[i][0]][indexes[i][1]] < self.similarity_treshold:
                         cur_track, cur_det = unconfirmed_tracks[indexes[i][0]], remain_detections[indexes[i][1]]
-                        cur_track.update(cur_det.coord, cur_det.hist, cur_det.l, cur_det.h, cur_det.conf, self.kf, 0, 0)
+                        cur_track.update(cur_det.coord, cur_det.hist, cur_det.l, cur_det.h, cur_det.conf, self.kf)
                         detections_matched.add(indexes[i][1])
                 unmatched_detections = {x for x in range(len(remain_detections))} - detections_matched
 

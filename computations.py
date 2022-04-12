@@ -54,6 +54,17 @@ def iou(detA, detB):
     return iou
 
 
+def calcutale_Bhattacharyya_distance(tracks, detections):
+    hist_sim = np.eye(len(tracks), len(detections))
+    for i in range(len(tracks)):
+        for j in range(len(detections)):
+            t1 = tracks[i]
+            t2 = detections[j]
+            hist_sim[i][j] = cv2.compareHist(tracks[i].color_hist, detections[j].color_hist,
+                                             cv2.HISTCMP_BHATTACHARYYA)
+    return hist_sim
+
+
 def compute_new_hsv(im):
     """
     Illuminance and Gamma invariant HSV

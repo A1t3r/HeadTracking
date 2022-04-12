@@ -1,25 +1,41 @@
 import cv2
 import random
-import numpy as np
+import torch
 from computations import compute_histogram
-from add_sup import parse_det_of_images, parse_gt_of_images, extract_image_part, parse_det_of_images_BYTE
-import motmetrics as mm
+from tracker import Tracker
+from add_sup import parse_det_of_images_BYTE, extract_image_part
+from byte_tracker.byte_tracker import BYTETracker
 from matplotlib import pyplot as plt
 import matplotlib.patches as patches
 import time
 from os import path
-import torch
-from byte_tracker.byte_tracker import BYTETracker
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-path", help="path to MOT dataset", type=str)
+parser.add_argument("-Vout", help="show output", type=str)
+parser.add_argument("-Tout", help="show output", type=str)
+parser.add_argument("-v", "--verbose", help="-")
+parser.add_argument("-cdc", help="show output", type=float)
+args = parser.parse_args()
+
+work_dir = args.path
+# if args.out == 't':
+#     show = True
+# else: show = False
+show = True
 
 use_color_distance = True
+if args.cdc > 1 or args.cdc <= 0.01 or args.cdc is None:
+    use_color_distance = False
 
-work_dir = "F:/diploma/HT21/train/HT21-04"
-out_dir = "F:/diploma/out/tracks/HT-train/track/data"
+video_out = args.Vout
+tracker_out = args.Tout
+dataset_name = args.path.split('\\')[-1]
 
-gt_data = parse_gt_of_images(work_dir + '/gt/gt.txt')
-det_data = parse_det_of_images(work_dir + '/det/det.txt')
-det_data_BYTE = parse_det_of_images_BYTE(work_dir + '/det/det.txt')
+det_data_BYTE = parse_det_of_images_BYTE(work_dir + '/gt/gt.txt')
 img_dir = work_dir + '/img1/'
+out_dir = f"{tracker_out}/tracks/HT-train/track/data"
 
 tracker = BYTETracker(track_thresh=0.6, track_buffer=0.1, match_thresh=0.35,
                       use_color_dist=use_color_distance, color_dist_coef=0.11,
@@ -32,10 +48,10 @@ hist_arr = None
 
 # VIDEO
 fourcc = cv2.VideoWriter_fourcc(*'DIVX')
-out = cv2.VideoWriter('F:\diploma\out\output_video.avi', fourcc, 30, (1920, 1080))
+out = cv2.VideoWriter(f'{video_out}/output_video.avi', fourcc, 30, (1920, 1080))
 
 #  open out file for track_eval
-with open(out_dir + "/HT21-01.txt", 'w') as f_out:
+with open(out_dir + f"/{dataset_name}.txt", 'w') as f_out:
     # another frame
     images_ar = []
     im_it = 0
@@ -74,20 +90,7 @@ with open(out_dir + "/HT21-01.txt", 'w') as f_out:
                                                    int(track.tlwh[1])), 1, 1, color_table[track.track_id], 2, cv2.LINE_AA)
 
         out.write(img)
-       # window_name = 'image'
-       # cv2.imshow(window_name, img)
-       # cv2.waitKey(0)
-       # cv2.destroyAllWindows()
-
         im_it += 1
         print("\n-----------" + str(im_it) + "------------\n")
 out.release()
-# print(">90:{} | >85:{} | >75:{} | >70:{} | >65:{} | <65:{}".format(hist_list[0],
-#                                                                    hist_list[1], hist_list[2], hist_list[3],
-#                                                                    hist_list[4], hist_list[5]))
-# print(">90:{} | >85:{} | >75:{} | >70:{} | >65:{} | <65:{}".format(hist_list[0] / cm_len,
-#                                                                    hist_list[1] / cm_len, hist_list[2] / cm_len,
-#                                                                    hist_list[3] / cm_len,
-#                                                                    hist_list[4] / cm_len, hist_list[5] / cm_len))
-
 
