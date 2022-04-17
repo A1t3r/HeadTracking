@@ -2,12 +2,11 @@
 
 ## How to run:
  1. install requirements via pip install -r requirements.txt
- 2. run run_track_eval.py via python run_track_eval.py specifying path to MOT dataset and choose if you want to see the output or not using bool -out variable
+ 2. run run_track.py with specified parameters which are described below
 
 parameters:
-    -path - path where MOT data is stored
-    -Vout - path where video out will be stored
-    -Tout - path where tracks out will be stored
-    -cdc - coef for color hist distance
-
- 
+ <br />   -path - path where MOT data is stored
+ <br />  -Vout - path where video out will be stored
+ <br />  -Tout - path where tracks out will be stored
+ <br />   -cdc - coef for color hist distance (from 0 to 1). If 0 is specified, so no color histogram similarity will be used
+ <br />  -BYTE - if you want to use BYTE tracker to specify letter 't', in other cases DeepSORT will be used
