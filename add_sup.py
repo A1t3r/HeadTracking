@@ -1,6 +1,7 @@
 from PIL import Image, ImageDraw
 from tracker import single_detection
 from byte_tracker.byte_tracker import STrack
+import cv2
 
 
 def save_gif(path_to, path_from, len):
