@@ -1,6 +1,7 @@
 import cv2
 import random
 import torch
+import os
 from computations import compute_histogram
 from tracker import Tracker
 from add_sup import parse_det_of_images_BYTE, extract_image_part
@@ -37,10 +38,12 @@ if args.BYTE == 't':
 video_out = args.Vout
 tracker_out = args.Tout
 dataset_name = args.path.split('\\')[-1]
-
 det_data_BYTE = parse_det_of_images_BYTE(work_dir + '/det/det.txt')
 img_dir = work_dir + '/img1/'
 out_dir = f"{tracker_out}/tracks/HT-train/track/data"
+
+if '/' in dataset_name:
+    dataset_name = args.path.split('/')[-1]
 
 if is_BYTE:
     tracker = BYTETracker(track_thresh=0.6, track_buffer=0.1, match_thresh=0.35,
@@ -48,10 +51,15 @@ if is_BYTE:
                           max_time_lost=15, mot20=None)
 else:
     tracker = Tracker(use_color_distance)
-
+print(dataset_name)
 hist_list = [0] * 6
 cm_len = 0
 hist_arr = None
+
+try:
+    open(out_dir + f"/{dataset_name}.txt", 'w')
+except Exception:
+    os.makedirs(out_dir)
 
 # VIDEO
 #fourcc = cv2.VideoWriter_fourcc(*'DIVX')

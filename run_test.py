@@ -43,7 +43,7 @@ fourcc = cv2.VideoWriter_fourcc(*'MP4V')
 out = cv2.VideoWriter('F:\diploma\out\output_video.mp4', fourcc, 30, (1920, 1080))
 
 #  open out file for track_eval
-with open(out_dir + "/HT21-01.txt", 'w') as f_out:
+with open(out_dir + "/HT21-01.txt", mode='w') as f_out:
     # another frame
     images_ar = []
     im_it = 0
