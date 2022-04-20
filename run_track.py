@@ -14,9 +14,9 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-path", help="path to MOT dataset", type=str)
-parser.add_argument("-Vout", help="path to video", type=str)
-parser.add_argument("-Tout", help="path to tracks", type=str)
-parser.add_argument("-BYTE", help="show output", type=str)
+parser.add_argument("-vout", help="path to video", type=str)
+parser.add_argument("-tout", help="path to tracks", type=str)
+parser.add_argument("-tracker", choices=["deep_sort", "byte"], help="Tracker type")
 parser.add_argument("-cdc", help="show output", type=float)
 parser.add_argument("-v", "--verbose", help="-")
 args = parser.parse_args()
@@ -32,11 +32,11 @@ use_color_distance = True
 if args.cdc > 1 or args.cdc <= 0.01 or args.cdc is None:
     use_color_distance = False
 
-if args.BYTE == 't':
+if args.tracker == 'byte':
     is_BYTE = True
 
-video_out = args.Vout
-tracker_out = args.Tout
+video_out = args.vout
+tracker_out = args.tout
 dataset_name = args.path.split('\\')[-1]
 det_data_BYTE = parse_det_of_images_BYTE(work_dir + '/det/det.txt')
 img_dir = work_dir + '/img1/'
@@ -47,7 +47,7 @@ if '/' in dataset_name:
 
 if is_BYTE:
     tracker = BYTETracker(track_thresh=0.6, track_buffer=0.1, match_thresh=0.35,
-                          use_color_dist=use_color_distance, color_dist_coef=0.11,
+                          use_color_dist=use_color_distance, color_dist_coef=args.cdc,
                           max_time_lost=15, mot20=None)
 else:
     tracker = Tracker(use_color_distance)

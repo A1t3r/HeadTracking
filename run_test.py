@@ -14,7 +14,7 @@ from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
 
 use_color_distance = True
-is_BYTE = False
+is_BYTE = True
 
 work_dir = "F:/diploma/HT21/train/HT21-01"
 out_dir = "F:/diploma/out/tracks/HT-train/track/data"
