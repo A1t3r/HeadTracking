@@ -66,7 +66,7 @@ except Exception:
 #out = cv2.VideoWriter(f'{video_out}/output_video.avi', fourcc, 30, (1920, 1080))
 
 fourcc = cv2.VideoWriter_fourcc(*'MP4V')
-out = cv2.VideoWriter(f'{video_out}/output_video.mp4', fourcc, 30, (1920, 1080))
+out = cv2.VideoWriter(f'{video_out}/{dataset_name}.mp4', fourcc, 30, (1920, 1080))
 
 #  open out file for track_eval
 with open(out_dir + f"/{dataset_name}.txt", 'w') as f_out:

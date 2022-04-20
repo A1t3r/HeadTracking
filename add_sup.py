@@ -14,7 +14,7 @@ def parse_gt_of_images_BYTE(dir):
     gt_file = open(dir)
     GT_data = []
     gt_data = []
-    cur_frame = 1
+    cur_frame = -1
     for line in gt_file:
         tmp_arr = [float(x) for x in line[:-2].split(',')]
         if int(tmp_arr[0]) != cur_frame:
@@ -31,7 +31,7 @@ def parse_det_of_images_BYTE(dir):
     gt_file = open(dir)
     GT_data = []
     gt_data = []
-    cur_frame = 1
+    cur_frame = -1
     for line in gt_file:
         tmp_arr = [float(x) for x in line[:-3].split(',')]
         if int(tmp_arr[0]) != cur_frame:

@@ -16,7 +16,7 @@ from deep_sort.tracker import Tracker
 use_color_distance = True
 is_BYTE = False
 
-work_dir = "F:/diploma/HT21/train/HT21-04"
+work_dir = "F:/diploma/HT21/train/HT21-01"
 out_dir = "F:/diploma/out/tracks/HT-train/track/data"
 
 #gt_data = parse_gt_of_images(work_dir + '/gt/gt.txt')
