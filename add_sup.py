@@ -10,7 +10,7 @@ def save_gif(path_to, path_from, len):
                       save_all=True, append_images=images_ar[1:], optimize=False)
 
 
-def parse_gt_of_images_BYTE(dir):
+def parse_gt_of_images_BYTE_rf(dir):
     gt_file = open(dir)
     GT_data = []
     gt_data = []
@@ -21,10 +21,9 @@ def parse_gt_of_images_BYTE(dir):
             cur_frame = int(tmp_arr[0])
             GT_data.append(gt_data)
             gt_data = []
-        s = STrack(int(tmp_arr[1]) - 46,
-                             (tmp_arr[2], tmp_arr[3]),
-                             tmp_arr[4], tmp_arr[5], 100, 0, 0)
-        gt_data.append(s)
+        gt_data.append((tmp_arr[0], int(tmp_arr[1]),
+                             tmp_arr[2], tmp_arr[3],
+                             tmp_arr[4], tmp_arr[5], 100, 0, 0))
     GT_data.append(gt_data)
     return GT_data
 
@@ -41,6 +40,26 @@ def parse_det_of_images_BYTE(dir):
             gt_data = []
         s = (tmp_arr[2], tmp_arr[3],
              tmp_arr[2] + tmp_arr[4], tmp_arr[3] + tmp_arr[5], tmp_arr[6])
+        gt_data.append(s)
+    GT_data.append(gt_data)
+    return GT_data
+
+def parse_det_of_images_CenterNet(dir):
+    gt_file = open(dir)
+    GT_data = []
+    gt_data = []
+    cur_frame = 1
+    for line in gt_file:
+        tmp_arr = [float(x) for x in line[:-3].split(',')]
+        if tmp_arr[6]*100 < 45 or tmp_arr[2]<=0 or tmp_arr[3]<=0 or tmp_arr[4]<=0 or tmp_arr[5]<=0 \
+                or tmp_arr[2]>=tmp_arr[4] or tmp_arr[3]>=tmp_arr[5]:
+            continue
+        if int(tmp_arr[0]) != cur_frame:
+            cur_frame = int(tmp_arr[0])
+            GT_data.append(gt_data)
+            gt_data = []
+        s = (tmp_arr[2], tmp_arr[3],
+             tmp_arr[4], tmp_arr[5], tmp_arr[6]*100)
         gt_data.append(s)
     GT_data.append(gt_data)
     return GT_data

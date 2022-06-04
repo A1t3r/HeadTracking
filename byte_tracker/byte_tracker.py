@@ -70,6 +70,7 @@ class STrack(BaseTrack):
         if new_id:
             self.track_id = self.next_id()
         self.score = new_track.score
+        self.color_hist = new_track.color_hist
 
     def update(self, new_track, frame_id):
         """
@@ -157,7 +158,7 @@ class BYTETracker(object):
         self.use_color_dist = use_color_dist
         self.color_dist_coef = color_dist_coef
         self.track_thresh = track_thresh
-        self.det_thresh = track_thresh + 0.1
+        self.det_thresh = track_thresh + 10
         self.buffer_size = int(frame_rate / 30.0 * track_buffer)
         self.max_time_lost = max_time_lost
         self.kalman_filter = KalmanFilter()
@@ -181,7 +182,7 @@ class BYTETracker(object):
         bboxes /= scale
 
         remain_inds = scores > self.track_thresh
-        inds_low = scores > 0.1
+        inds_low = scores > 10
         inds_high = scores < self.track_thresh
 
         inds_second = np.logical_and(inds_low, inds_high)
@@ -236,8 +237,12 @@ class BYTETracker(object):
         # association the untrack to the low score detections
         if len(dets_second) > 0:
             '''Detections'''
-            detections_second = [STrack(STrack.tlbr_to_tlwh(tlbr), s) for
-                                 (tlbr, s) in zip(dets_second, scores_second)]
+            if self.use_color_dist:
+                detections_second = [STrack(STrack.tlbr_to_tlwh(tlbr), s, hist) for
+                              (tlbr, s, hist) in zip(dets_second, scores_second, hist_arr)]
+            else:
+                detections_second = [STrack(STrack.tlbr_to_tlwh(tlbr), s) for
+                              (tlbr, s) in zip(dets_second, scores_second)]
         else:
             detections_second = []
         r_tracked_stracks = [strack_pool[i] for i in u_track if strack_pool[i].state == TrackState.Tracked]

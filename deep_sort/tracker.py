@@ -124,6 +124,7 @@ class Tracker:
                 gated_metric, 1, self.max_age,
                 self.tracks, detections, confirmed_tracks)
 
+
         # Associate remaining tracks together with unconfirmed tracks using IOU.
         iou_track_candidates = unconfirmed_tracks + [
             k for k in unmatched_tracks_a if
